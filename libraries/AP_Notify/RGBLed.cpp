@@ -32,6 +32,11 @@ RGBLed::RGBLed(uint8_t led_off, uint8_t led_bright, uint8_t led_medium, uint8_t 
 
 }    
 
+RGBLed::~RGBLed()
+{
+    set_rgb(_led_off, _led_off, _led_off);
+}
+
 bool RGBLed::init()
 {
     return hw_init();

@@ -25,6 +25,7 @@
 class RGBLed: public NotifyDevice {
 public:
     RGBLed(uint8_t led_off, uint8_t led_bright, uint8_t led_medium, uint8_t led_dim);
+    ~RGBLed();
 
     // init - initialised the LED
     virtual bool init(void) override;
