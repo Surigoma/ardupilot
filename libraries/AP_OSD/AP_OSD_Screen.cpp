@@ -22,6 +22,7 @@
 #include "AP_OSD.h"
 #include "AP_OSD_Backend.h"
 
+#if OSD_ENABLED
 #include <AP_HAL/AP_HAL.h>
 #include <AP_HAL/Util.h>
 #include <AP_AHRS/AP_AHRS.h>
@@ -36,6 +37,13 @@
 #include <AP_RTC/AP_RTC.h>
 #include <AP_MSP/msp.h>
 #include <AP_OLC/AP_OLC.h>
+#include <AP_VideoTX/AP_VideoTX.h>
+#include <AP_Terrain/AP_Terrain.h>
+#if APM_BUILD_TYPE(APM_BUILD_Rover)
+#include <AP_WindVane/AP_WindVane.h>
+#endif
+#include <AP_Filesystem/AP_Filesystem.h>
+
 #include <ctype.h>
 #include <GCS_MAVLink/GCS.h>
 
@@ -78,17 +86,17 @@ const AP_Param::GroupInfo AP_OSD_Screen::var_info[] = {
     // @Range: 0 15
     AP_SUBGROUPINFO(altitude, "ALTITUDE", 4, AP_OSD_Screen, AP_OSD_Setting),
 
-    // @Param: BATVOLT_EN
+    // @Param: BAT_VOLT_EN
     // @DisplayName: BATVOLT_EN
     // @Description: Displays main battery voltage
     // @Values: 0:Disabled,1:Enabled
 
-    // @Param: BATVOLT_X
+    // @Param: BAT_VOLT_X
     // @DisplayName: BATVOLT_X
     // @Description: Horizontal position on screen
     // @Range: 0 29
 
-    // @Param: BATVOLT_Y
+    // @Param: BAT_VOLT_Y
     // @DisplayName: BATVOLT_Y
     // @Description: Vertical position on screen
     // @Range: 0 15
@@ -288,7 +296,7 @@ const AP_Param::GroupInfo AP_OSD_Screen::var_info[] = {
 
     // @Param: WIND_EN
     // @DisplayName: WIND_EN
-    // @Description: Displays wind speed and relative direction
+    // @Description: Displays wind speed and relative direction, on Rover this is the apparent wind speed and direction from the windvane, if fitted
     // @Values: 0:Disabled,1:Enabled
 
     // @Param: WIND_X
@@ -625,17 +633,17 @@ const AP_Param::GroupInfo AP_OSD_Screen::var_info[] = {
     // @Range: 0 15
     AP_SUBGROUPINFO(atemp, "ATEMP", 38, AP_OSD_Screen, AP_OSD_Setting),
 
-    // @Param: BAT2VLT_EN
+    // @Param: BAT2_VLT_EN
     // @DisplayName: BAT2VLT_EN
     // @Description: Displays battery2 voltage
     // @Values: 0:Disabled,1:Enabled
 
-    // @Param: BAT2VLT_X
+    // @Param: BAT2_VLT_X
     // @DisplayName: BAT2VLT_X
     // @Description: Horizontal position on screen
     // @Range: 0 29
 
-    // @Param: BAT2VLT_Y
+    // @Param: BAT2_VLT_Y
     // @DisplayName: BAT2VLT_Y
     // @Description: Vertical position on screen
     // @Range: 0 15
@@ -705,7 +713,7 @@ const AP_Param::GroupInfo AP_OSD_Screen::var_info[] = {
     // @Description: Vertical position on screen
     // @Range: 0 15
     AP_SUBGROUPINFO(clk, "CLK", 43, AP_OSD_Screen, AP_OSD_Setting),
-    
+
 #if HAL_MSP_ENABLED
     // @Param: SIDEBARS_EN
     // @DisplayName: SIDEBARS_EN
@@ -714,7 +722,7 @@ const AP_Param::GroupInfo AP_OSD_Screen::var_info[] = {
 
     // @Param: SIDEBARS_X
     // @DisplayName: SIDEBARS_X
-    // @Description: Horizontal position on screen (MSP OSD only) 
+    // @Description: Horizontal position on screen (MSP OSD only)
     // @Range: 0 29
 
     // @Param: SIDEBARS_Y
@@ -730,7 +738,7 @@ const AP_Param::GroupInfo AP_OSD_Screen::var_info[] = {
 
     // @Param: CRSSHAIR_X
     // @DisplayName: CRSSHAIR_X
-    // @Description: Horizontal position on screen (MSP OSD only) 
+    // @Description: Horizontal position on screen (MSP OSD only)
     // @Range: 0 29
 
     // @Param: CRSSHAIR_Y
@@ -787,33 +795,33 @@ const AP_Param::GroupInfo AP_OSD_Screen::var_info[] = {
     // @Range: 0 15
     AP_SUBGROUPINFO(power, "POWER", 48, AP_OSD_Screen, AP_OSD_Setting),
 
-    // @Param: CELL_VOLT_EN
+    // @Param: CELLVOLT_EN
     // @DisplayName: CELL_VOLT_EN
     // @Description: Displays average cell voltage (MSP OSD only)
     // @Values: 0:Disabled,1:Enabled
 
-    // @Param: CELL_VOLT_X
+    // @Param: CELLVOLT_X
     // @DisplayName: CELL_VOLT_X
     // @Description: Horizontal position on screen
     // @Range: 0 29
 
-    // @Param: CELL_VOLT_Y
+    // @Param: CELLVOLT_Y
     // @DisplayName: CELL_VOLT_Y
     // @Description: Vertical position on screen
     // @Range: 0 15
     AP_SUBGROUPINFO(cell_volt, "CELLVOLT", 49, AP_OSD_Screen, AP_OSD_Setting),
 
-    // @Param: BATT_BAR_EN
+    // @Param: BATTBAR_EN
     // @DisplayName: BATT_BAR_EN
     // @Description: Displays battery usage bar (MSP OSD only)
     // @Values: 0:Disabled,1:Enabled
 
-    // @Param: BATT_BAR_X
+    // @Param: BATTBAR_X
     // @DisplayName: BATT_BAR_X
     // @Description: Horizontal position on screen
     // @Range: 0 29
 
-    // @Param: BATT_BAR_Y
+    // @Param: BATTBAR_Y
     // @DisplayName: BATT_BAR_Y
     // @Description: Vertical position on screen
     // @Range: 0 15
@@ -839,7 +847,7 @@ const AP_Param::GroupInfo AP_OSD_Screen::var_info[] = {
 #if HAL_PLUSCODE_ENABLE
     // @Param: PLUSCODE_EN
     // @DisplayName: PLUSCODE_EN
-    // @Description: Displays pluscode (OLC) element 
+    // @Description: Displays pluscode (OLC) element
     // @Values: 0:Disabled,1:Enabled
 
     // @Param: PLUSCODE_X
@@ -853,6 +861,106 @@ const AP_Param::GroupInfo AP_OSD_Screen::var_info[] = {
     // @Range: 0 15
     AP_SUBGROUPINFO(pluscode, "PLUSCODE", 52, AP_OSD_Screen, AP_OSD_Setting),
 #endif
+
+#if HAVE_FILESYSTEM_SUPPORT
+    // @Param: CALLSIGN_EN
+    // @DisplayName: CALLSIGN_EN
+    // @Description: Displays callsign from callsign.txt on microSD card
+    // @Values: 0:Disabled,1:Enabled
+
+    // @Param: CALLSIGN_X
+    // @DisplayName: CALLSIGN_X
+    // @Description: Horizontal position on screen
+    // @Range: 0 29
+
+    // @Param: CALLSIGN_Y
+    // @DisplayName: CALLSIGN_Y
+    // @Description: Vertical position on screen
+    // @Range: 0 15
+    AP_SUBGROUPINFO(callsign, "CALLSIGN", 53, AP_OSD_Screen, AP_OSD_Setting),
+#endif
+
+    // @Param: CURRENT2_EN
+    // @DisplayName: CURRENT2_EN
+    // @Description: Displays 2nd battery current
+    // @Values: 0:Disabled,1:Enabled
+
+    // @Param: CURRENT2_X
+    // @DisplayName: CURRENT2_X
+    // @Description: Horizontal position on screen
+    // @Range: 0 29
+
+    // @Param: CURRENT2_Y
+    // @DisplayName: CURRENT2_Y
+    // @Description: Vertical position on screen
+    // @Range: 0 15
+    AP_SUBGROUPINFO(current2, "CURRENT2", 54, AP_OSD_Screen, AP_OSD_Setting),
+
+    // @Param: VTX_PWR_EN
+    // @DisplayName: VTX_PWR_EN
+    // @Description: Displays VTX Power
+    // @Values: 0:Disabled,1:Enabled
+
+    // @Param: VTX_PWR_X
+    // @DisplayName: VTX_PWR_X
+    // @Description: Horizontal position on screen
+    // @Range: 0 29
+
+    // @Param: VTX_PWR_Y
+    // @DisplayName: VTX_PWR_Y
+    // @Description: Vertical position on screen
+    // @Range: 0 15
+    AP_SUBGROUPINFO(vtx_power, "VTX_PWR", 55, AP_OSD_Screen, AP_OSD_Setting),
+
+#if AP_TERRAIN_AVAILABLE
+    // @Param: TER_HGT_EN
+    // @DisplayName: TER_HGT_EN
+    // @Description: Displays Height above terrain
+    // @Values: 0:Disabled,1:Enabled
+
+    // @Param: TER_HGT_X
+    // @DisplayName: TER_HGT_X
+    // @Description: Horizontal position on screen
+    // @Range: 0 29
+
+    // @Param: TER_HGT_Y
+    // @DisplayName: TER_HGT_Y
+    // @Description: Vertical position on screen
+    // @Range: 0 15
+    AP_SUBGROUPINFO(hgt_abvterr, "TER_HGT", 56, AP_OSD_Screen, AP_OSD_Setting),
+#endif
+
+    // @Param: AVGCELLV_EN
+    // @DisplayName: AVGCELLV_EN
+    // @Description: Displays average cell voltage. WARNING: this can be inaccurate if the cell count is not detected or set properly. If the  the battery is far from fully charged the detected cell count might not be accurate if auto cell count detection is used (OSD_CELL_COUNT=0).
+    // @Values: 0:Disabled,1:Enabled
+
+    // @Param: AVGCELLV_X
+    // @DisplayName: AVGCELLV_X
+    // @Description: Horizontal position on screen
+    // @Range: 0 29
+
+    // @Param: AVGCELLV_Y
+    // @DisplayName: AVGCELLV_Y
+    // @Description: Vertical position on screen
+    // @Range: 0 15
+    AP_SUBGROUPINFO(avgcellvolt, "AVGCELLV", 57, AP_OSD_Screen, AP_OSD_Setting),
+
+    // @Param: RESTVOLT_EN
+    // @DisplayName: RESTVOLT_EN
+    // @Description: Displays main battery resting voltage
+    // @Values: 0:Disabled,1:Enabled
+
+    // @Param: RESTVOLT_X
+    // @DisplayName: RESTVOLT_X
+    // @Description: Horizontal position on screen
+    // @Range: 0 29
+
+    // @Param: RESTVOLT_Y
+    // @DisplayName: RESTVOLT_Y
+    // @Description: Vertical position on screen
+    // @Range: 0 15
+    AP_SUBGROUPINFO(restvolt, "RESTVOLT", 58, AP_OSD_Screen, AP_OSD_Setting),
     AP_GROUPEND
 };
 
@@ -945,6 +1053,7 @@ AP_OSD_Screen::AP_OSD_Screen()
 #define SYM_FLY       0x9C
 #define SYM_EFF       0xF2
 #define SYM_AH        0xF3
+#define SYM_MW        0xF4
 #define SYM_CLK       0xBC
 
 void AP_OSD_AbstractScreen::set_backend(AP_OSD_Backend *_backend)
@@ -1084,6 +1193,36 @@ void AP_OSD_Screen::draw_bat_volt(uint8_t x, uint8_t y)
     backend->write(x,y, v < osd->warn_batvolt, "%c%2.1f%c", SYM_BATT_FULL + p, (double)v, SYM_VOLT);
 }
 
+void AP_OSD_Screen::draw_avgcellvolt(uint8_t x, uint8_t y)
+{
+    AP_BattMonitor &battery = AP::battery();
+    uint8_t pct = battery.capacity_remaining_pct();
+    uint8_t p = (100 - pct) / 16.6;
+    float v = battery.voltage();
+    // calculate cell count - WARNING this can be inaccurate if the LIPO/LIION  battery is far from fully charged when attached and is used in this panel
+    osd->max_battery_voltage = MAX(osd->max_battery_voltage,v);
+    if (osd->cell_count > 0) {
+        v = v / osd->cell_count;  
+        backend->write(x,y, v < osd->warn_avgcellvolt, "%c%1.2f%c", SYM_BATT_FULL + p, v, SYM_VOLT);
+    } else if (osd->cell_count < 0) { // user must decide on autodetect cell count or manually entered to display this panel since default is -1
+        backend->write(x,y, false, "%c---%c", SYM_BATT_FULL + p, SYM_VOLT);
+    } else {  // use autodetected cell count
+        v = v /  (uint8_t)(osd->max_battery_voltage * 0.2381 + 1);
+        backend->write(x,y, v < osd->warn_avgcellvolt, "%c%1.2f%c", SYM_BATT_FULL + p, v, SYM_VOLT);
+    }
+}
+
+void AP_OSD_Screen::draw_restvolt(uint8_t x, uint8_t y)
+{
+    AP_BattMonitor &battery = AP::battery();
+    uint8_t pct = battery.capacity_remaining_pct();
+    uint8_t p = (100 - pct) / 16.6;
+    float v = battery.voltage_resting_estimate();
+    backend->write(x,y, v < osd->warn_restvolt, "%c%2.1f%c", SYM_BATT_FULL + p, (double)v, SYM_VOLT);
+}
+
+
+
 void AP_OSD_Screen::draw_rssi(uint8_t x, uint8_t y)
 {
     AP_RSSI *ap_rssi = AP_RSSI::get_singleton();
@@ -1093,11 +1232,10 @@ void AP_OSD_Screen::draw_rssi(uint8_t x, uint8_t y)
     }
 }
 
-void AP_OSD_Screen::draw_current(uint8_t x, uint8_t y)
+void AP_OSD_Screen::draw_current(uint8_t instance, uint8_t x, uint8_t y)
 {
-    AP_BattMonitor &battery = AP::battery();
     float amps;
-    if (!battery.current_amps(amps)) {
+    if (!AP::battery().current_amps(amps, instance)) {
         osd->avg_current_a = 0;
     }
     //filter current and display with autoranging for low values
@@ -1108,6 +1246,11 @@ void AP_OSD_Screen::draw_current(uint8_t x, uint8_t y)
     else {
         backend->write(x, y, false, "%2.1f%c", osd->avg_current_a, SYM_AMP);
     }
+}
+
+void AP_OSD_Screen::draw_current(uint8_t x, uint8_t y)
+{
+    draw_current(0, x, y);
 }
 
 void AP_OSD_Screen::draw_fltmode(uint8_t x, uint8_t y)
@@ -1205,19 +1348,15 @@ void AP_OSD_Screen::draw_message(uint8_t x, uint8_t y)
     }
 }
 
-void AP_OSD_Screen::draw_speed_vector(uint8_t x, uint8_t y,Vector2f v, int32_t yaw)
+// draw a arrow at the given angle, and print the given magnitude
+void AP_OSD_Screen::draw_speed(uint8_t x, uint8_t y, float angle_rad, float magnitude)
 {
-    float v_length = v.length();
-    char arrow = SYM_ARROW_START;
-    if (v_length > 1.0f) {
-        int32_t angle = wrap_360_cd(DEGX100 * atan2f(v.y, v.x) - yaw);
-        int32_t interval = 36000 / SYM_ARROW_COUNT;
-        arrow = SYM_ARROW_START + ((angle + interval / 2) / interval) % SYM_ARROW_COUNT;
-    }
-    if (u_scale(SPEED, v_length) < 10.0) {
-        backend->write(x, y, false, "%c%3.1f%c", arrow, u_scale(SPEED, v_length), u_icon(SPEED)); 
+    static const int32_t interval = 36000 / SYM_ARROW_COUNT;
+    char arrow = SYM_ARROW_START + ((int32_t(angle_rad*DEGX100) + interval / 2) / interval) % SYM_ARROW_COUNT;
+    if (u_scale(SPEED, magnitude) < 9.95) {
+        backend->write(x, y, false, "%c %1.1f%c", arrow, u_scale(SPEED, magnitude), u_icon(SPEED));
     } else {
-        backend->write(x, y, false, "%c%3d%c", arrow, (int)u_scale(SPEED, v_length), u_icon(SPEED));
+        backend->write(x, y, false, "%c%3d%c", arrow, (int)roundf(u_scale(SPEED, magnitude)), u_icon(SPEED));
     }
 }
 
@@ -1227,7 +1366,14 @@ void AP_OSD_Screen::draw_gspeed(uint8_t x, uint8_t y)
     WITH_SEMAPHORE(ahrs.get_semaphore());
     Vector2f v = ahrs.groundspeed_vector();
     backend->write(x, y, false, "%c", SYM_GSPD);
-    draw_speed_vector(x + 1, y, v, ahrs.yaw_sensor);
+
+    float angle = 0;
+    const float length = v.length();
+    if (length > 1.0f) {
+        angle = wrap_2PI(atan2f(v.y, v.x) - ahrs.yaw);
+    }
+
+    draw_speed(x + 1, y, angle, length);
 }
 
 //Thanks to betaflight/inav for simple and clean artificial horizon visual design
@@ -1367,14 +1513,28 @@ void AP_OSD_Screen::draw_compass(uint8_t x, uint8_t y)
 
 void AP_OSD_Screen::draw_wind(uint8_t x, uint8_t y)
 {
+#if !APM_BUILD_TYPE(APM_BUILD_Rover)
     AP_AHRS &ahrs = AP::ahrs();
     WITH_SEMAPHORE(ahrs.get_semaphore());
     Vector3f v = ahrs.wind_estimate();
-    if (check_option(AP_OSD::OPTION_INVERTED_WIND)) {
-        v = -v;
+    float angle = 0;
+    const float length = v.length();
+    if (length > 1.0f) {
+        if (check_option(AP_OSD::OPTION_INVERTED_WIND)) {
+            angle = M_PI;
+        }
+        angle = wrap_2PI(angle + atan2f(v.y, v.x) - ahrs.yaw);
     }
+    draw_speed(x + 1, y, angle, length);
+
+#else
+    const AP_WindVane* windvane = AP_WindVane::get_singleton();
+    if (windvane != nullptr) {
+        draw_speed(x + 1, y, wrap_2PI(windvane->get_apparent_wind_direction_rad() + M_PI), windvane->get_apparent_wind_speed());
+    }
+#endif
+
     backend->write(x, y, false, "%c", SYM_WSPD);
-    draw_speed_vector(x + 1, y, Vector2f(v.x, v.y), ahrs.yaw_sensor);
 }
 
 void AP_OSD_Screen::draw_aspeed(uint8_t x, uint8_t y)
@@ -1415,10 +1575,11 @@ void AP_OSD_Screen::draw_vspeed(uint8_t x, uint8_t y)
         sym = SYM_DOWN_DOWN;
     }
     vs_scaled = u_scale(VSPEED, fabsf(vspd));
-    if (vs_scaled < 5.0f) {
-        backend->write(x, y, false, "%c%2.1f%c", sym, (float)vs_scaled, u_icon(VSPEED));
+    if ((osd->units != AP_OSD::UNITS_AVIATION) && (vs_scaled < 9.95f)) {
+        backend->write(x, y, false, "%c%.1f%c", sym, (float)vs_scaled, u_icon(VSPEED));
     } else {
-        backend->write(x, y, false, "%c%3d%c", sym, (int)vs_scaled, u_icon(VSPEED));
+        const char *fmt = osd->units == AP_OSD::UNITS_AVIATION ? "%c%4d%c" : "%c%2d%c";
+        backend->write(x, y, false, fmt, sym, (int)roundf(vs_scaled), u_icon(VSPEED));
     }
 }
 
@@ -1727,6 +1888,63 @@ void AP_OSD_Screen::draw_pluscode(uint8_t x, uint8_t y)
 }
 #endif
 
+/*
+  support callsign display from a file called callsign.txt
+ */
+void AP_OSD_Screen::draw_callsign(uint8_t x, uint8_t y)
+{
+#if HAVE_FILESYSTEM_SUPPORT
+    if (!callsign_data.load_attempted) {
+        callsign_data.load_attempted = true;
+        FileData *fd = AP::FS().load_file("callsign.txt");
+        if (fd != nullptr) {
+            uint32_t len = fd->length;
+            // trim off whitespace
+            while (len > 0 && isspace(fd->data[len-1])) {
+                len--;
+            }
+            callsign_data.str = strndup((const char *)fd->data, len);
+            delete fd;
+        }
+    }
+    if (callsign_data.str != nullptr) {
+        backend->write(x, y, false, callsign_data.str);
+    }
+#endif
+}
+
+void AP_OSD_Screen::draw_current2(uint8_t x, uint8_t y)
+{
+    draw_current(1, x, y);
+}
+
+void AP_OSD_Screen::draw_vtx_power(uint8_t x, uint8_t y)
+{
+    AP_VideoTX *vtx = AP_VideoTX::get_singleton();
+    if (!vtx) {
+        return;
+    }
+    uint16_t powr = 0;
+    // If currently in pit mode, just render 0mW to the screen
+    if(!vtx->has_option(AP_VideoTX::VideoOptions::VTX_PITMODE)){
+        powr = vtx->get_power_mw();
+    }
+    backend->write(x, y, false, "%4hu%c", powr, SYM_MW);
+}
+#if AP_TERRAIN_AVAILABLE
+void AP_OSD_Screen::draw_hgt_abvterr(uint8_t x, uint8_t y)
+{
+    AP_Terrain &terrain = AP::terrain();
+
+    float terrain_altitude;
+    if (terrain.height_above_terrain(terrain_altitude,true)) {
+        backend->write(x, y, terrain_altitude < osd->warn_terr, "%4d%c", (int)u_scale(ALTITUDE, terrain_altitude), u_icon(ALTITUDE));
+     } else {
+        backend->write(x, y, false, " ---%c", u_icon(ALTITUDE));
+     }
+}
+#endif
+
 #define DRAW_SETTING(n) if (n.enabled) draw_ ## n(n.xpos, n.ypos)
 
 #if HAL_WITH_OSD_BITMAP
@@ -1743,10 +1961,17 @@ void AP_OSD_Screen::draw(void)
     DRAW_SETTING(horizon);
     DRAW_SETTING(compass);
     DRAW_SETTING(altitude);
+
+#if AP_TERRAIN_AVAILABLE
+    DRAW_SETTING(hgt_abvterr);
+#endif
+
     DRAW_SETTING(waypoint);
     DRAW_SETTING(xtrack_error);
     DRAW_SETTING(bat_volt);
     DRAW_SETTING(bat2_vlt);
+    DRAW_SETTING(avgcellvolt);
+    DRAW_SETTING(restvolt);
     DRAW_SETTING(rssi);
     DRAW_SETTING(current);
     DRAW_SETTING(batused);
@@ -1770,6 +1995,7 @@ void AP_OSD_Screen::draw(void)
     DRAW_SETTING(hdop);
     DRAW_SETTING(flightime);
     DRAW_SETTING(clk);
+    DRAW_SETTING(vtx_power);
 
 #ifdef HAVE_AP_BLHELI_SUPPORT
     DRAW_SETTING(blh_temp);
@@ -1786,5 +2012,8 @@ void AP_OSD_Screen::draw(void)
     DRAW_SETTING(stat);
     DRAW_SETTING(climbeff);
     DRAW_SETTING(eff);
+    DRAW_SETTING(callsign);
+    DRAW_SETTING(current2);
 }
 #endif
+#endif // OSD_ENABLED
