@@ -741,14 +741,33 @@ void AP_MotorsMatrix::setup_motors(motor_frame_class frame_class, motor_frame_ty
                     break;
                 case MOTOR_FRAME_TYPE_SFD:
                     // Created from https://www.iforce2d.net/mixercalc/
-                    add_motor_raw(AP_MOTORS_MOT_1, 1, 1, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 1);
-                    add_motor_raw(AP_MOTORS_MOT_2, 1, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 2);
-                    add_motor_raw(AP_MOTORS_MOT_3, 1, -1, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 3);
-                    add_motor_raw(AP_MOTORS_MOT_4, 0, -1, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 4);
-                    add_motor_raw(AP_MOTORS_MOT_5, -1, -1, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 5);
-                    add_motor_raw(AP_MOTORS_MOT_6, -1, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 6);
-                    add_motor_raw(AP_MOTORS_MOT_7, -1, 1, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 7);
-                    add_motor_raw(AP_MOTORS_MOT_8, 0, 1, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 8);
+                    // Constraints
+                    /*
+                    * 1 3 300
+                    * 3 8 300
+                    * 8 4 300
+                    * 4 2 300
+                    * 2 6 300
+                    * 6 7 300
+                    * 7 5 300
+                    * 5 1 300
+                    * 1 3 h
+                    * 3 8 v
+                    * 8 4 v
+                    * 4 2 h
+                    * 2 6 h
+                    * 6 7 v
+                    * 7 5 v
+                    * 5 1 h
+                    */
+                    add_motor_raw(AP_MOTORS_MOT_1, 0, 1, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 1);
+                    add_motor_raw(AP_MOTORS_MOT_2, 0, -1, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 2);
+                    add_motor_raw(AP_MOTORS_MOT_3, -1, 1, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 3);
+                    add_motor_raw(AP_MOTORS_MOT_4, -1, -1, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 4);
+                    add_motor_raw(AP_MOTORS_MOT_5, 1, 1, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 5);
+                    add_motor_raw(AP_MOTORS_MOT_6, 1, -1, AP_MOTORS_MATRIX_YAW_FACTOR_CW, 6);
+                    add_motor_raw(AP_MOTORS_MOT_7, 1, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 7);
+                    add_motor_raw(AP_MOTORS_MOT_8, -1, 0, AP_MOTORS_MATRIX_YAW_FACTOR_CCW, 8);
                     break;
                 default:
                     // octa frame class does not support this frame type
